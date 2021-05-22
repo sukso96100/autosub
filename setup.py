@@ -33,7 +33,7 @@ setup(
         ],
     },
     install_requires=[
-        'google-api-python-client>=1.4.2',
+        'google-api-python-client>=2.5.0',
         'requests>=2.25.1',
         'pysrt>=1.1.2',
         'progressbar2>=3.53.1',
