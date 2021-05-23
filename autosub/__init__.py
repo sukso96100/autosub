@@ -22,6 +22,7 @@ try:
 except ImportError:
     JSONDecodeError = ValueError
 
+from google.cloud import translate, speech
 from googleapiclient.discovery import build
 from progressbar import ProgressBar, Percentage, Bar, ETA
 
@@ -84,15 +85,38 @@ class SpeechRecognizer(object): # pylint: disable=too-few-public-methods
     """
     Class for performing speech-to-text for an input FLAC file.
     """
-    def __init__(self, language="en", rate=44100, retries=3, api_key=GOOGLE_SPEECH_API_KEY):
+    def __init__(self, language="en", rate=44100, retries=3, model=None):
         self.language = language
         self.rate = rate
-        self.api_key = api_key
+        self.model = model
         self.retries = retries
 
     def __call__(self, data):
         try:
             for _ in range(self.retries):
+
+                client = speech.SpeechClient()
+
+                with open(speech_file, "rb") as audio_file:
+                    content = audio_file.read()
+
+                audio = speech.RecognitionAudio(content=content)
+
+                config = speech.RecognitionConfig(
+                    encoding=speech.RecognitionConfig.AudioEncoding.LINEAR16,
+                    sample_rate_hertz=self.rate,
+                    language_code=self.language,
+                    model=self.model,
+                )
+
+                response = client.recognize(config=config, audio=audio)
+                ##
+                for i, result in enumerate(response.results):
+                    alternative = result.alternatives[0]
+                    print("-" * 20)
+                    print("First alternative of result {}".format(i))
+                    print(u"Transcript: {}".format(alternative.transcript))
+
                 url = GOOGLE_SPEECH_API_URL.format(lang=self.language, key=self.api_key)
                 headers = {"Content-Type": "audio/x-flac; rate=%d" % self.rate}
 
@@ -116,15 +140,15 @@ class SpeechRecognizer(object): # pylint: disable=too-few-public-methods
             return None
 
 
-class Translator(object): # pylint: disable=too-few-public-methods
+class Translator(object):  # pylint: disable=too-few-public-methods
     """
     Class for translating a sentence from a one language to another.
     """
-    def __init__(self, language, api_key, src, dst):
-        self.language = language
-        self.api_key = api_key
-        self.service = build('translate', 'v2',
-                             developerKey=self.api_key)
+
+    def __init__(self, project_id, location="global", src="en-US", dst="ko-KR"):
+        self.project_id = project_id
+        self.location = location
+        self.client = translate.TranslationServiceClient()
         self.src = src
         self.dst = dst
 
@@ -132,16 +156,24 @@ class Translator(object): # pylint: disable=too-few-public-methods
         try:
             if not sentence:
                 return None
+                
+            parent = f"projects/{self.project_id}/locations/{self.location}"
 
-            result = self.service.translations().list( # pylint: disable=no-member
-                source=self.src,
-                target=self.dst,
-                q=[sentence]
-            ).execute()
+            # Detail on supported types can be found here:
+            # https://cloud.google.com/translate/docs/supported-formats
+            response = self.client.translate_text(
+                request={
+                    "parent": parent,
+                    "contents": [sentence.alternatives[0]],
+                    "mime_type": "text/plain",  # mime types: text/plain, text/html
+                    "source_language_code": self.src,
+                    "target_language_code": self.dst,
+                }
+            )
 
-            if 'translations' in result and result['translations'] and \
-                'translatedText' in result['translations'][0]:
-                return result['translations'][0]['translatedText']
+            if 'translations' in response and response['translations'] and \
+                    'translated_text' in response['translations'][0]:
+                return response['translations'][0]['translated_text']
 
             return None
 
