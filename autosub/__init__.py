@@ -152,9 +152,9 @@ class Translator(object):  # pylint: disable=too-few-public-methods
                 }
             )
 
-            if 'translations' in response and response['translations'] and \
-                    'translated_text' in response['translations'][0]:
-                return response['translations'][0]['translated_text']
+            if 'translations' in response and response.translations and \
+                    'translated_text' in response.translations[0]:
+                return response.translations[0].translated_text
 
             return None
 
