@@ -97,10 +97,7 @@ class SpeechRecognizer(object): # pylint: disable=too-few-public-methods
 
                 client = speech.SpeechClient()
 
-                with open(speech_file, "rb") as audio_file:
-                    content = audio_file.read()
-
-                audio = speech.RecognitionAudio(content=content)
+                audio = speech.RecognitionAudio(content=data)
 
                 config = speech.RecognitionConfig(
                     encoding=speech.RecognitionConfig.AudioEncoding.LINEAR16,
@@ -110,26 +107,10 @@ class SpeechRecognizer(object): # pylint: disable=too-few-public-methods
                 )
 
                 response = client.recognize(config=config, audio=audio)
-                ##
-                for i, result in enumerate(response.results):
-                    alternative = result.alternatives[0]
-                    print("-" * 20)
-                    print("First alternative of result {}".format(i))
-                    print(u"Transcript: {}".format(alternative.transcript))
-
-                url = GOOGLE_SPEECH_API_URL.format(lang=self.language, key=self.api_key)
-                headers = {"Content-Type": "audio/x-flac; rate=%d" % self.rate}
-
-                try:
-                    resp = requests.post(url, data=data, headers=headers)
-                except requests.exceptions.ConnectionError:
-                    continue
-
-                for line in resp.content.decode('utf-8').split("\n"):
+                # return 
+                for line in response.results:
                     try:
-                        line = json.loads(line)
-                        line = line['result'][0]['alternative'][0]['transcript']
-                        return line[:1].upper() + line[1:]
+                        return line.alternatives[0].transcript
                     except IndexError:
                         # no result
                         continue
