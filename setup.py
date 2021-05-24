@@ -33,7 +33,6 @@ setup(
         ],
     },
     install_requires=[
-        'google-api-python-client>=2.5.0',
         'google-cloud-speech>=2.3.0',
         'google-cloud-translate>=3.1.0',
         'requests>=2.25.1',

@@ -3,10 +3,6 @@ Defines constants used by autosub.
 """
 
 
-
-GOOGLE_SPEECH_API_KEY = "AIzaSyBOti4mM-6x9WDnZIjIeyEU21OpBXqWBgw"
-GOOGLE_SPEECH_API_URL = "http://www.google.com/speech-api/v2/recognize?client=chromium&lang={lang}&key={key}" # pylint: disable=line-too-long
-
 LANGUAGE_CODES = {
     'af': 'Afrikaans',
     'ar': 'Arabic',
