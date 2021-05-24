@@ -15,8 +15,6 @@ import subprocess
 import sys
 import tempfile
 import wave
-import json
-import requests
 import concurrent.futures
 
 try:
@@ -25,19 +23,16 @@ except ImportError:
     JSONDecodeError = ValueError
 
 from google.cloud import translate, speech
-from googleapiclient.discovery import build
 from progressbar import ProgressBar, Percentage, Bar, ETA
 
-from autosub.constants import (
-    LANGUAGE_CODES, GOOGLE_SPEECH_API_KEY, GOOGLE_SPEECH_API_URL,
-)
+from autosub.constants import LANGUAGE_CODES
 from autosub.formatters import FORMATTERS
 
 DEFAULT_SUBTITLE_FORMAT = 'srt'
 DEFAULT_CONCURRENCY = 10
 DEFAULT_SRC_LANGUAGE = 'en'
 DEFAULT_DST_LANGUAGE = 'en'
-
+DEFAULT_SPEECH_MODEL = 'default'
 
 def percentile(arr, percent):
     """
@@ -104,7 +99,7 @@ class SpeechRecognizer(object): # pylint: disable=too-few-public-methods
                     encoding=speech.RecognitionConfig.AudioEncoding.ENCODING_UNSPECIFIED,
                     sample_rate_hertz=self.rate,
                     language_code=self.language,
-                    # model=self.model,
+                    model=self.model,
                 )
 
                 response = self.client.recognize(config=config, audio=audio)
@@ -253,7 +248,8 @@ def generate_subtitles( # pylint: disable=too-many-locals,too-many-arguments
         dst_language=DEFAULT_DST_LANGUAGE,
         subtitle_file_format=DEFAULT_SUBTITLE_FORMAT,
         project_id=None,
-        location="global"
+        location="global",
+        model="default"
     ):
     """
     Given an input audio/video file, generate subtitles in the specified language and format.
@@ -265,7 +261,7 @@ def generate_subtitles( # pylint: disable=too-many-locals,too-many-arguments
     pool = multiprocessing.Pool(concurrency)
     converter = FLACConverter(source_path=audio_filename)
     recognizer = SpeechRecognizer(language=src_language, rate=audio_rate,
-                                  model="video")
+                                  model=model)
 
     transcripts = []
     if regions:
@@ -384,11 +380,10 @@ def main():
                         default=DEFAULT_SRC_LANGUAGE)
     parser.add_argument('-D', '--dst-language', help="Desired language for the subtitles",
                         default=DEFAULT_DST_LANGUAGE)
-    # parser.add_argument('-K', '--api-key',
-    #                     help="The Google Translate API key to be used. \
-    #                     (Required for subtitle translation)")
     parser.add_argument('-P', '--project-id', help="Your Google Cloud Project ID")
     parser.add_argument('-L', '--location', help="Google Cloud region id(e.g. us-central1)")
+    parser.add_argument('-M', '--model', help="Speech regocnition model(default, video, phone_call, command_and_search",
+                        default=DEFAULT_SPEECH_MODEL)
     parser.add_argument('--list-formats', help="List all available subtitle formats",
                         action='store_true')
     parser.add_argument('--list-languages', help="List all available source/destination languages",
@@ -422,6 +417,7 @@ def main():
             location=args.location,
             subtitle_file_format=args.format,
             output=args.output,
+            model=args.model
         )
         print("Subtitles file created at {}".format(subtitle_file_path))
     except KeyboardInterrupt:
