@@ -17,6 +17,8 @@ import tempfile
 import wave
 import json
 import requests
+import concurrent.futures
+
 try:
     from json.decoder import JSONDecodeError
 except ImportError:
@@ -90,27 +92,27 @@ class SpeechRecognizer(object): # pylint: disable=too-few-public-methods
         self.rate = rate
         self.model = model
         self.retries = retries
+        self.client = speech.SpeechClient()
 
     def __call__(self, data):
         try:
             for _ in range(self.retries):
 
-                client = speech.SpeechClient()
-
                 audio = speech.RecognitionAudio(content=data)
 
                 config = speech.RecognitionConfig(
-                    encoding=speech.RecognitionConfig.AudioEncoding.LINEAR16,
+                    encoding=speech.RecognitionConfig.AudioEncoding.ENCODING_UNSPECIFIED,
                     sample_rate_hertz=self.rate,
                     language_code=self.language,
-                    model=self.model,
+                    # model=self.model,
                 )
 
-                response = client.recognize(config=config, audio=audio)
+                response = self.client.recognize(config=config, audio=audio)
+
                 # return 
-                for line in response.results:
+                for result in response.results:
                     try:
-                        return line.alternatives[0].transcript
+                        return result.alternatives[0].transcript
                     except IndexError:
                         # no result
                         continue
@@ -145,7 +147,7 @@ class Translator(object):  # pylint: disable=too-few-public-methods
             response = self.client.translate_text(
                 request={
                     "parent": parent,
-                    "contents": [sentence.alternatives[0]],
+                    "contents": [sentence],
                     "mime_type": "text/plain",  # mime types: text/plain, text/html
                     "source_language_code": self.src,
                     "target_language_code": self.dst,
@@ -250,7 +252,8 @@ def generate_subtitles( # pylint: disable=too-many-locals,too-many-arguments
         src_language=DEFAULT_SRC_LANGUAGE,
         dst_language=DEFAULT_DST_LANGUAGE,
         subtitle_file_format=DEFAULT_SUBTITLE_FORMAT,
-        api_key=None,
+        project_id=None,
+        location="global"
     ):
     """
     Given an input audio/video file, generate subtitles in the specified language and format.
@@ -258,11 +261,11 @@ def generate_subtitles( # pylint: disable=too-many-locals,too-many-arguments
     audio_filename, audio_rate = extract_audio(source_path)
 
     regions = find_speech_regions(audio_filename)
-
+    tpool = concurrent.futures.ThreadPoolExecutor(concurrency)
     pool = multiprocessing.Pool(concurrency)
     converter = FLACConverter(source_path=audio_filename)
     recognizer = SpeechRecognizer(language=src_language, rate=audio_rate,
-                                  api_key=GOOGLE_SPEECH_API_KEY)
+                                  model="video")
 
     transcripts = []
     if regions:
@@ -279,22 +282,22 @@ def generate_subtitles( # pylint: disable=too-many-locals,too-many-arguments
             widgets = ["Performing speech recognition: ", Percentage(), ' ', Bar(), ' ', ETA()]
             pbar = ProgressBar(widgets=widgets, maxval=len(regions)).start()
 
-            for i, transcript in enumerate(pool.imap(recognizer, extracted_regions)):
+            for i, transcript in enumerate(tpool.map(recognizer, extracted_regions)):
                 transcripts.append(transcript)
                 pbar.update(i)
             pbar.finish()
 
             if src_language.split("-")[0] != dst_language.split("-")[0]:
-                if api_key:
-                    google_translate_api_key = api_key
-                    translator = Translator(dst_language, google_translate_api_key,
+                if project_id:
+                    translator = Translator(project_id, 
+                                            location=location,
                                             dst=dst_language,
                                             src=src_language)
                     prompt = "Translating from {0} to {1}: ".format(src_language, dst_language)
                     widgets = [prompt, Percentage(), ' ', Bar(), ' ', ETA()]
                     pbar = ProgressBar(widgets=widgets, maxval=len(regions)).start()
                     translated_transcripts = []
-                    for i, transcript in enumerate(pool.imap(translator, transcripts)):
+                    for i, transcript in enumerate(tpool.map(translator, transcripts)):
                         translated_transcripts.append(transcript)
                         pbar.update(i)
                     pbar.finish()
@@ -381,13 +384,16 @@ def main():
                         default=DEFAULT_SRC_LANGUAGE)
     parser.add_argument('-D', '--dst-language', help="Desired language for the subtitles",
                         default=DEFAULT_DST_LANGUAGE)
-    parser.add_argument('-K', '--api-key',
-                        help="The Google Translate API key to be used. \
-                        (Required for subtitle translation)")
+    # parser.add_argument('-K', '--api-key',
+    #                     help="The Google Translate API key to be used. \
+    #                     (Required for subtitle translation)")
+    parser.add_argument('-P', '--project-id', help="Your Google Cloud Project ID")
+    parser.add_argument('-L', '--location', help="Google Cloud region id(e.g. us-central1)")
     parser.add_argument('--list-formats', help="List all available subtitle formats",
                         action='store_true')
     parser.add_argument('--list-languages', help="List all available source/destination languages",
                         action='store_true')
+    
 
     args = parser.parse_args()
 
@@ -412,7 +418,8 @@ def main():
             concurrency=args.concurrency,
             src_language=args.src_language,
             dst_language=args.dst_language,
-            api_key=args.api_key,
+            project_id=args.project_id,
+            location=args.location,
             subtitle_file_format=args.format,
             output=args.output,
         )
