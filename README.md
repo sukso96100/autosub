@@ -9,6 +9,32 @@ Autosub is a utility for automatic speech recognition and subtitle generation. I
 1. Install [ffmpeg](https://www.ffmpeg.org/).
 2. Run `pip install git+https://github.com/sukso96100/autosub`.
 
+### Generate Google Cloud Credential file
+- [Install Google Cloud SDK](https://cloud.google.com/sdk/install)
+- Run `gcloud init` to log in, initilize and select Google Cloud project for local environment
+- Enable required API (Speech to text, Translation API)
+
+```bash
+gcloud services enable speech.googleapis.com texttospeech.googleapis.com translate.googleapis.com 
+```
+
+- Create service account
+```bash
+gcloud iam service-accounts create ml-dev --description="ML APIs developer access" --display-name="ML Developer Service Account"
+```
+
+- Grant ML Dev and project viewer role to the service account
+```bash
+gcloud projects add-iam-policy-binding <your_google_cloud_project_id> --member serviceAccount:ml-dev@<your_google_cloud_project_id>.iam.gserviceaccount.com --role roles/ml.developer
+gcloud projects add-iam-policy-binding <your_google_cloud_project_id> --member serviceAccount:ml-dev@<your_google_cloud_project_id>.iam.gserviceaccount.com --role roles/viewer
+```
+
+- Create JSON credential file for service account
+```bash
+gcloud iam service-accounts keys create ./ml-dev.json --iam-account ml-dev@<your_google_cloud_project_id>.iam.gserviceaccount.com
+```
+
+
 ### Usage
 Set `GOOGLE_APPLICATION_CREDENTIAL` environment variable
 ```
