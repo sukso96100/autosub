@@ -36,9 +36,9 @@ gcloud iam service-accounts keys create ./ml-dev.json --iam-account ml-dev@<your
 
 
 ### Usage
-Set `GOOGLE_APPLICATION_CREDENTIAL` environment variable
+Set `GOOGLE_APPLICATION_CREDENTIALS` environment variable
 ```
-export GOOGLE_APPLICATION_CREDENTIAL=./credential.json
+export GOOGLE_APPLICATION_CREDENTIALS=./credential.json
 ```
 
 ```
