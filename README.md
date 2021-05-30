@@ -7,15 +7,18 @@ Autosub is a utility for automatic speech recognition and subtitle generation. I
 ### Installation
 
 1. Install [ffmpeg](https://www.ffmpeg.org/).
-2. Run `pip install autosub`.
+2. Run `pip install git+https://github.com/sukso96100/autosub`.
 
 ### Usage
+Set `GOOGLE_APPLICATION_CREDENTIAL` environment variable
+```
+export GOOGLE_APPLICATION_CREDENTIAL=./credential.json
+```
 
 ```
 $ autosub -h
-usage: autosub [-h] [-C CONCURRENCY] [-o OUTPUT] [-F FORMAT] [-S SRC_LANGUAGE]
-               [-D DST_LANGUAGE] [-K API_KEY] [--list-formats]
-               [--list-languages]
+usage: autosub [-h] [-C CONCURRENCY] [-o OUTPUT] [-F FORMAT] [-S SRC_LANGUAGE] [-D DST_LANGUAGE] [-P PROJECT_ID]
+               [-L LOCATION] [-M MODEL] [--list-formats] [--list-languages]
                [source_path]
 
 positional arguments:
@@ -26,20 +29,26 @@ optional arguments:
   -C CONCURRENCY, --concurrency CONCURRENCY
                         Number of concurrent API requests to make
   -o OUTPUT, --output OUTPUT
-                        Output path for subtitles (by default, subtitles are
-                        saved in the same directory and name as the source
-                        path)
+                        Output path for subtitles (by default, subtitles are saved in the same directory and name as
+                        the source path)
   -F FORMAT, --format FORMAT
                         Destination subtitle format
   -S SRC_LANGUAGE, --src-language SRC_LANGUAGE
                         Language spoken in source file
   -D DST_LANGUAGE, --dst-language DST_LANGUAGE
                         Desired language for the subtitles
-  -K API_KEY, --api-key API_KEY
-                        The Google Translate API key to be used. (Required for
-                        subtitle translation)
+  -P PROJECT_ID, --project-id PROJECT_ID
+                        Your Google Cloud Project ID
+  -L LOCATION, --location LOCATION
+                        Google Cloud region id(e.g. us-central1)
+  -M MODEL, --model MODEL
+                        Speech regocnition model(default, video, phone_call, command_and_search
   --list-formats        List all available subtitle formats
   --list-languages      List all available source/destination languages
+```
+Command example
+```
+autosub -F srt -S en -D ko -P my-gcp-project -L us-central1 -M default video.mp4
 ```
 
 ### License
